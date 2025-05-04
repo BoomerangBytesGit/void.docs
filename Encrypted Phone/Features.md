@@ -8,55 +8,55 @@ The OS is also hard at work on filling in gaps from not bundling Google apps and
 This page provides an overview of currently implemented features differentiating The OS from AOSP. It doesn't document our many historical features that are no longer included for one reason or another. Many of our features were implemented in AOSP, Linux, LLVM and other projects The OS is based on and those aren't listed here. In many cases, we've been involved in getting those features implemented in core infrastructure projects.
 
 # Table of contents
-The OS
-Defending against exploitation of unknown vulnerabilities
-Attack surface reduction
-USB-C port and pogo pins control
-Exploit mitigations
-Improved sandboxing
-Anti-persistence / detection
-More complete patching
-Sandboxed Google Play
-Android Auto
-Network permission toggle
-Sensors permission toggle
-Storage Scopes
-Contact Scopes
-Broad carrier support without invasive carrier access
-LTE-only mode
-Wi-Fi privacy
-Network location
-Private screenshots
-Closed device identifier leaks
-Privacy by default
-PIN scrambling
-Two-factor fingerprint unlock
-Supports longer passwords
-Auto reboot
-Clearing sensitive data from memory
-Duress PIN/Password
-More secure fingerprint unlock
-Improved user profiles
-More user profiles
-End session
-Disabling app installation
-Install available apps
-Notification forwarding
-The OS app repository
-Vanadium: hardened WebView and default browser
-Auditor app and attestation service
-The OS Camera
-The OS PDF Viewer
-The OS Setup Wizard
-Encrypted backups
-Location data access indicator
-User installed apps can be disabled
-Improved VPN leak blocking
-Log viewer and user-facing crash reporting
-Other features
-Services
-Project
-The OS
+- The OS
+- Defending against exploitation of unknown vulnerabilities
+- Attack surface reduction
+- USB-C port and pogo pins control
+- Exploit mitigations
+- Improved sandboxing
+- Anti-persistence / detection
+- More complete patching
+- Sandboxed Google Play
+- Android Auto
+- Network permission toggle
+- Sensors permission toggle
+- Storage Scopes
+- Contact Scopes
+- Broad carrier support without invasive carrier access
+- LTE-only mode
+- Wi-Fi privacy
+- Network location
+- Private screenshots
+- Closed device identifier leaks
+- Privacy by default
+- PIN scrambling
+- Two-factor fingerprint unlock
+- Supports longer passwords
+- Auto reboot
+- Clearing sensitive data from memory
+- Duress PIN/Password
+- More secure fingerprint unlock
+- Improved user profiles
+- More user profiles
+- End session
+- Disabling app installation
+- Install available apps
+- Notification forwarding
+- The OS app repository
+- Vanadium: hardened WebView and default browser
+- Auditor app and attestation service
+- The OS Camera
+- The OS PDF Viewer
+- The OS Setup Wizard
+- Encrypted backups
+- Location data access indicator
+- User installed apps can be disabled
+- Improved VPN leak blocking
+- Log viewer and user-facing crash reporting
+- Other features
+- Services
+- Project
+- The OS
 
 These are the features of The OS beyond what's provided by version 15 of the Android Open Source Project. It only covers our improvements to AOSP and not baseline features. This section doesn't list features like the standard app sandbox, verified boot, exploit mitigations (ASLR, SSP, Shadow Call Stack, Control Flow Integrity, etc.), permission system (foreground-only and one-time permission grants, scoped file access control, etc.) and so on but rather only our improvements to modern Android. We plan on providing a separate page listing the improvements we've contributed to Android since those features aren't listed here despite being a substantial portion of our overall historical work.
 
@@ -85,11 +85,12 @@ Our USB-C port and pogo pins setting protects against attacks through USB-C or p
 
 The feature has five modes:
 
-Off
-Charging-only
-Charging-only when locked
-Charging-only when locked, except before first unlock
-On
+- Off
+- Charging-only
+- Charging-only when locked
+- Charging-only when locked, except before first unlock
+- On
+
 The default is Charging-only when locked, which significantly reduces attack surface when the device is locked. After locking, it blocks any new USB connections immediately through either USB-C and pogo pins at both the hardware level via configuring the USB controller and also at the OS level in the kernel to provide a second layer of defense. It disables the data lines at a hardware level as soon as the existing connections end which happens right away if there were no USB connections. It also disables USB-C alternate modes including DisplayPort at both the OS and hardware level.
 
 Our implementation is far more secure than Android's standard USB HAL toggle available to device admin apps. The standard feature only disables high level USB handling in the OS. It doesn't block new USB connections or disable the data lines at a hardware level. It also leaves the handling of the USB-C and pogo pins protocols enabled in the OS, and it doesn't disable the USB-C alternate modes. The standard feature is also either blocking or not blocking USB at a high level, without the ability to block new connections and disable USB only once the existing connections end. Other operating systems trying to implement a similar feature via the standard toggle end up continuing to allow new USB connections in the OS until all connections end instead of the two-phase approach we use for our two Charging-only when locked modes.
@@ -97,52 +98,52 @@ Our implementation is far more secure than Android's standard USB HAL toggle ava
 The highest security Off mode disables charging in addition to data to remove the remaining attack surface from the USB controller and OS supporting charging including the USB-PD protocol. There's no risk of the device not being able to be charged since the overall feature doesn't apply while the device is powered off, booted into the firmware-based fastboot mode or the charging, recovery and fastbootd modes.
 
 ## Exploit mitigations
-Hardened app runtime
-Secure application spawning system avoiding sharing address space layout and other secrets across applications
-Hardened libc providing defenses against the most common classes of vulnerabilities (memory corruption)
-Our own hardened malloc (memory allocator) leveraging modern hardware capabilities to provide substantial defenses against the most common classes of vulnerabilities (heap memory corruption) along with reducing the lifetime of sensitive data in memory. The hardened_malloc README has extensive documentation on it. The hardened_malloc project is portable to other Linux-based operating systems and is being adopted by other security-focused operating systems like secureblue. Our allocator also heavily influenced the design of the next-generation musl malloc implementation which offers substantially better security than musl's previous malloc while still having minimal memory usage and code size.
-Fully out-of-line metadata with protection from corruption, ruling out traditional allocator exploitation
-Separate memory regions for metadata, large allocations and each slab allocation size class with high entropy random bases and no address space reuse between the different regions
-Deterministic detection of any invalid free
-Zero-on-free with detection of write-after-free via checking that memory is still zeroed before handing it out again
-Delayed reuse of address space and memory allocations through the combination of deterministic and randomized quarantines to mitigate use-after-free vulnerabilities
-Fine-grained randomization
-Aggressive consistency checks
-Memory protected guard regions around allocations larger than 16k with randomization of guard region sizes for 128k and above
-Allocations smaller than 16k have guard regions around each of the slabs containing allocations (for example, 16 byte allocations are in 4096 byte slabs with 4096 byte guard regions before and after)
-Random canaries with a leading zero are added to these smaller allocations to block C string overflows, absorb small overflows and detect linear overflows or other heap corruption when the canary value is checked (primarily on free)
-Hardware memory tagging for slab allocations (128k and below) providing probabilistic detection of all use-after-free and inter-object overflows along with deterministic detection of all small/linear overflows and use-after-free until it has been reused once and gone through the quarantines twice
-On ARMv9, Branch Target Identification (BTI) and Pointer Authentication Code (PAC) return address protection are enabled for userspace OS code we build instead of only specific apps
-Signed integer overflow is made well defined in C and C++ for code where automatic overflow checking is disabled
-Hardened kernel
-4-level page tables are enabled on arm64 to provide a much larger address space (48-bit instead of 39-bit) with significantly higher entropy Address Space Layout Randomization (33-bit instead of 24-bit).
-Basic hardware memory tagging is used in the main kernel memory allocators (slab, page_alloc, non-executable vmalloc) to provide probabilistic detection of all use-after-free and inter-object overflows along with deterministic detection of use-after-free until the memory is allocated again (we plan to add deterministic detection of small/linear overflows like hardened_malloc)
-Random canaries with a leading zero are added to the kernel heap (slub) to block C string overflows, absorb small overflows and detect linear overflows or other heap corruption when the canary value is checked (on free, copies to/from userspace, etc.).
-Memory is wiped (zeroed) as soon as it's released in both the low-level kernel page allocator and higher level kernel heap allocator (slub). This substantially reduces the lifetime of sensitive data in memory, mitigates use-after-free vulnerabilities and makes most uninitialized data usage vulnerabilities harmless. Without our changes, memory that's released retains data indefinitely until the memory is handed out for other uses and gets partially or fully overwritten by new data.
-In early boot, all the memory not being used by the OS is zeroed to get rid of any data leftover from a previous boot in case zero-on-free didn't have the opportunity to clear it as part of a clean reboot/shutdown. All the devices we support have a reset attack protection feature we proposed zeroing memory for firmware-based boot modes, but we need to finish it up by adding it for the OS boot modes ourselves. Fully encrypted RAM with a per-boot key cycled on reboots will eventually obsolete these features for newer devices.
-Kernel stack allocations are zeroed to make most uninitialized data usage vulnerabilities harmless.
-Assorted attack surface reduction through disabling features or setting up infrastructure to dynamically enable/disable them only as needed (perf, ptrace).
-Assorted upstream hardening features are enabled, including many which we played a part in developing and landing upstream as part of our linux-hardened project (which we intend to revive as a more active project again).
-Forced kernel module signing with per-build RSA 4096 / SHA256 keys and lockdown mode set to forced confidentiality mode help to enforce a low-level boundary between the kernel and userspace even if mistakes are made in SELinux policy or there's a deep userspace compromise.
-Additional consistency/integrity checks are enabled for frequently targeted kernel data structures.
-On ARMv9, Branch Target Identification (BTI) is enabled in addition to Clang type-based Control Flow Integrity (CFI) to cover functions excluded from type-based CFI
-On ARMv9, ShadowCallStack (SCS) is enabled in addition to Pointer Authentication Code (PAC) return address protection instead of only enabling SCS when PAC is unavailable
-Android Runtime Just-In-Time (JIT) compilation/profiling is fully disabled and replaced with full ahead-of-time (AOT) compilation. The only JIT compilation in the base OS is the V8 JavaScript JIT which is disabled by default for the Vanadium browser with per-site exception support.
-Dynamic code loading for both native code or Java/Kotlin classes is blocked for nearly the entire base OS to prevent base OS processes. This works alongside verified boot to prevent base OS processes from running attacker controlled native code or Java/Kotlin code. The only exceptions from the policy for the base OS are in-memory code loading for the media DRM sandbox and the Vanadium JIT compiler being permitted. Vanadium has JIT compilation disabled by default for every site and for apps using the WebView with the exception of our PDF Viewer app. Vanadium disables the JIT compiler by default with a per-site and per-app toggle for it and per-process enforcement of blocking dynamic code loading implemented with seccomp-bpf based on the per-site/per-app JIT compiler toggle.
-Dynamic code loading for both native code or Java/Kotlin classes can be disabled for user installed apps via 3 exploit protection toggles: Dynamic code loading from memory, Dynamic code loading from storage and WebView JIT. This can also be used to opt-out of the WebView JIT for our PDF Viewer and dynamic code loading from memory for the Vanadium browser to disable support for the per-site opt-in to JIT compilation. In order to make the dynamic code loading toggles more usable, we show a user facing notification when an app has dynamic code loading from memory or storage blocked, including a file path being shown when it's blocked from storage. This allows users to disable it for all their apps and then enable them for the ones requiring it.
-Filesystem access hardening
-Improved sandboxing
-The OS improves the app sandbox through hardening SELinux policy and seccomp-bpf policy along with all the hardening to components like kernel implementing the app sandbox and providing a path for the attacker to escape it if they can exploit those components. We primarily focus on the app sandbox, but we also improve the other sandboxes including making direct improvements to the web browser renderer sandbox used for both the default browser and WebView rendering engine provided by the OS and used by a huge number of other apps from dedicated browsers to messaging apps.
+- Hardened app runtime
+- Secure application spawning system avoiding sharing address space layout and other secrets across applications
+- Hardened libc providing defenses against the most common classes of vulnerabilities (memory corruption)
+- Our own hardened malloc (memory allocator) leveraging modern hardware capabilities to provide substantial defenses against the most common classes of vulnerabilities (heap memory corruption) along with reducing the lifetime of sensitive data in memory. The hardened_malloc README has extensive documentation on it. The hardened_malloc project is portable to other Linux-based operating systems and is being adopted by other security-focused operating systems like secureblue. Our allocator also heavily influenced the design of the next-generation musl malloc implementation which offers substantially better security than musl's previous malloc while still having minimal memory usage and code size.
+- Fully out-of-line metadata with protection from corruption, ruling out traditional allocator exploitation
+- Separate memory regions for metadata, large allocations and each slab allocation size class with high entropy random bases and no address space reuse between the different regions
+- Deterministic detection of any invalid free
+- Zero-on-free with detection of write-after-free via checking that memory is still zeroed before handing it out again
+- Delayed reuse of address space and memory allocations through the combination of deterministic and randomized quarantines to mitigate use-after-free vulnerabilities
+- Fine-grained randomization
+- Aggressive consistency checks
+- Memory protected guard regions around allocations larger than 16k with randomization of guard region sizes for 128k and above
+- Allocations smaller than 16k have guard regions around each of the slabs containing allocations (for example, 16 byte allocations are in 4096 byte slabs with 4096 byte guard regions before and after)
+- Random canaries with a leading zero are added to these smaller allocations to block C string overflows, absorb small overflows and detect linear overflows or other heap corruption when the canary value is checked (primarily on free)
+- Hardware memory tagging for slab allocations (128k and below) providing probabilistic detection of all use-after-free and inter-object overflows along with deterministic detection of all small/linear overflows and use-after-free until it has been reused once and gone through the quarantines twice
+- On ARMv9, Branch Target Identification (BTI) and Pointer Authentication Code (PAC) return address protection are enabled for userspace OS code we build instead of only specific apps
+- Signed integer overflow is made well defined in C and C++ for code where automatic overflow checking is disabled
+- Hardened kernel
+- 4-level page tables are enabled on arm64 to provide a much larger address space (48-bit instead of 39-bit) with significantly higher entropy Address Space Layout Randomization (33-bit instead of 24-bit).
+- Basic hardware memory tagging is used in the main kernel memory allocators (slab, page_alloc, non-executable vmalloc) to provide probabilistic detection of all use-after-free and inter-object overflows along with deterministic detection of use-after-free until the memory is allocated again (we plan to add deterministic detection of small/linear overflows like hardened_malloc)
+- Random canaries with a leading zero are added to the kernel heap (slub) to block C string overflows, absorb small overflows and detect linear overflows or other heap corruption when the canary value is checked (on free, copies to/from userspace, etc.).
+- Memory is wiped (zeroed) as soon as it's released in both the low-level kernel page allocator and higher level kernel heap allocator (slub). This substantially reduces the lifetime of sensitive data in memory, mitigates use-after-free vulnerabilities and makes most uninitialized data usage vulnerabilities harmless. Without our changes, memory that's released retains data indefinitely until the memory is handed out for other uses and gets partially or fully overwritten by new data.
+- In early boot, all the memory not being used by the OS is zeroed to get rid of any data leftover from a previous boot in case zero-on-free didn't have the opportunity to clear it as part of a clean reboot/shutdown. All the devices we support have a reset attack protection feature we proposed zeroing memory for firmware-based boot modes, but we need to finish it up by adding it for the OS boot modes ourselves. Fully encrypted RAM with a per-boot key cycled on reboots will eventually obsolete these features for newer devices.
+- Kernel stack allocations are zeroed to make most uninitialized data usage vulnerabilities harmless.
+- Assorted attack surface reduction through disabling features or setting up infrastructure to dynamically enable/disable them only as needed (perf, ptrace).
+- Assorted upstream hardening features are enabled, including many which we played a part in developing and landing upstream as part of our linux-hardened project (which we intend to revive as a more active project again).
+- Forced kernel module signing with per-build RSA 4096 / SHA256 keys and lockdown mode set to forced confidentiality mode help to enforce a low-level boundary between the kernel and userspace even if mistakes are made in SELinux policy or there's a deep userspace compromise.
+- Additional consistency/integrity checks are enabled for frequently targeted kernel data structures.
+- On ARMv9, Branch Target Identification (BTI) is enabled in addition to Clang type-based Control Flow Integrity (CFI) to cover functions excluded from type-based CFI
+- On ARMv9, ShadowCallStack (SCS) is enabled in addition to Pointer Authentication Code (PAC) return address protection instead of only enabling SCS when PAC is unavailable
+- Android Runtime Just-In-Time (JIT) compilation/profiling is fully disabled and replaced with full ahead-of-time (AOT) compilation. The only JIT compilation in the base OS is the V8 JavaScript JIT which is disabled by default for the Vanadium browser with per-site exception support.
+- Dynamic code loading for both native code or Java/Kotlin classes is blocked for nearly the entire base OS to prevent base OS processes. This works alongside verified boot to prevent base OS processes from running attacker controlled native code or Java/Kotlin code. The only exceptions from the policy for the base OS are in-memory code loading for the media DRM sandbox and the Vanadium JIT compiler being permitted. Vanadium has JIT compilation disabled by default for every site and for apps using the WebView with the exception of our PDF Viewer app. Vanadium disables the JIT compiler by default with a per-site and per-app toggle for it and per-process enforcement of blocking dynamic code loading implemented with seccomp-bpf based on the per-site/per-app JIT compiler toggle.
+- Dynamic code loading for both native code or Java/Kotlin classes can be disabled for user installed apps via 3 exploit protection toggles: Dynamic code loading from memory, Dynamic code loading from storage and WebView JIT. This can also be used to opt-out of the WebView JIT for our PDF Viewer and dynamic code loading from memory for the Vanadium browser to disable support for the per-site opt-in to JIT compilation. In order to make the dynamic code loading toggles more usable, we show a user facing notification when an app has dynamic code loading from memory or storage blocked, including a file path being shown when it's blocked from storage. This allows users to disable it for all their apps and then enable them for the ones requiring it.
+- Filesystem access hardening
+- Improved sandboxing
+- The OS improves the app sandbox through hardening SELinux policy and seccomp-bpf policy along with all the hardening to components like kernel implementing the app sandbox and providing a path for the attacker to escape it if they can exploit those components. We primarily focus on the app sandbox, but we also improve the other sandboxes including making direct improvements to the web browser renderer sandbox used for both the default browser and WebView rendering engine provided by the OS and used by a huge number of other apps from dedicated browsers to messaging apps.
 
 ## Anti-persistence / detection
-Enhanced verified boot with better security properties and reduced attack surface
-The OS finishes the incomplete implementation of verified boot for out-of-band updates to packages (APKs) in the OS. We enforce this by requiring fs-verity metadata signed with a trusted key for system app updates both at install time and boot time. This provides continuous verification where every read from an out-of-band APK update is verified similarly to every read from a firmware, OS image or APEX update being verified. The signing key and version are enforced to prevent downgrades or other attacks such as replacing a package with a variant of the same one from a different The OS supported device. We disable the persistent package parsing cache to prevent bypassing the metadata checks through this otherwise highly persistent state, which only has a very small negative impact on boot time from the data not being available from previous boots (typically less than 1 second).
-The OS closes a loophole where app-based system components built as part of the OS can be downgraded to an older version due to versionCode not being incremented when system components get updated as part of changes to the OS. We enforce this both at package install time and boot time.
-Enhanced hardware-based attestation with more precise version information
-Hardware-based security verification and monitoring via our Auditor app and attestation service
-Compressed APEX module support is disabled as it's not useful for The OS, uses extra unnecessary storage space and adds more verified boot attack surface.
-More complete patching
-The OS includes fixes for a large number of vulnerabilities not yet fixed in Android.
+- Enhanced verified boot with better security properties and reduced attack surface
+- The OS finishes the incomplete implementation of verified boot for out-of-band updates to packages (APKs) in the OS. We enforce this by requiring fs-verity metadata signed with a trusted key for system app updates both at install time and boot time. This provides continuous verification where every read from an out-of-band APK update is verified similarly to every read from a firmware, OS image or APEX update being verified. The signing key and version are enforced to prevent downgrades or other attacks such as replacing a package with a variant of the same one from a different The OS supported device. We disable the persistent package parsing cache to prevent bypassing the metadata checks through this otherwise highly persistent state, which only has a very small negative impact on boot time from the data not being available from previous boots (typically less than 1 second).
+- The OS closes a loophole where app-based system components built as part of the OS can be downgraded to an older version due to versionCode not being incremented when system components get updated as part of changes to the OS. We enforce this both at package install time and boot time.
+- Enhanced hardware-based attestation with more precise version information
+- Hardware-based security verification and monitoring via our Auditor app and attestation service
+- Compressed APEX module support is disabled as it's not useful for The OS, uses extra unnecessary storage space and adds more verified boot attack surface.
+- More complete patching
+- The OS includes fixes for a large number of vulnerabilities not yet fixed in Android.
 
 We're able to quickly and safely ship the latest Linux kernel LTS point releases on devices with GKI (Generic Kernel Image) support including the 6th and 7th generation Pixel phones. At the time of writing on 2023-11-06, The OS is using the latest Linux 5.10 GKI LTS release (5.10.199) for 6th and 7th generation Pixel phones. The stock Pixel OS is on Linux 5.10.157 from 2022-12-02 with a small number of additional patches backported. This means The OS provides hundreds of relevant kernel patches including many security patches not yet included in the stock OS. It's possible for us to stay several months ahead due to their approach of moving to new LTS releases only in quarterly releases after a long freeze and testing process.
 
@@ -179,7 +180,7 @@ To avoid breaking compatibility with Android apps, the added permission toggle i
 
 When the Network permission is disabled, The OS pretends the network is down. It shows the network as down in various APIs, returns errors showing a network connectivity issue rather than a revoked permission and avoids running scheduled jobs depending on the network. This results in apps handling it as if the network is down rather than crashing or showing errors from trying to use the network and being unable to do it.
 
-Sensors permission toggle
+## Sensors permission toggle
 Sensors permission toggle: disallow access to all other sensors not covered by existing Android permissions (Camera, Microphone, Body Sensors, Activity Recognition) including an accelerometer, gyroscope, compass, barometer, thermometer and any other sensors present on a given device. When access is disabled, apps receive zeroed data when they check for sensor values and don't receive events. The OS creates an easy-to-disable notification when apps try to access sensors blocked by the permission being denied. This makes the feature more usable since users can tell if the app is trying to access this functionality.
 
 To avoid breaking compatibility with Android apps, the added permission is enabled by default. When an app attempts to access sensors and receives zeroed data due to being denied, The OS creates a notification that can be easily disabled. The Sensors permission can be set to be disabled by default for user installed apps in Settings > Security & privacy > More security & privacy.
@@ -246,11 +247,12 @@ Some of our changes for attack surface reduction can also improve privacy by def
 By default, we also use The OS servers for the following services instead of Google servers:
 
 ## Connectivity checks
-Attestation key provisioning
-GNSS almanac downloads (PSDS) for Broadcom and Qualcomm (XTRA)
-Secure User Plane Location (SUPL)
-Network time
-Vanadium (Chromium) component updates
+- Attestation key provisioning
+- GNSS almanac downloads (PSDS) for Broadcom and Qualcomm (XTRA)
+- Secure User Plane Location (SUPL)
+- Network time
+- Vanadium (Chromium) component updates
+
 We provide a toggle to switch back to Google's servers for connectivity checks, attestation key provisioning and GNSS almanac downloads along with adding proper support for disabling network time connections. This combines with other toggles to allow making a The OS device appear to be an AOSP device. This is only particularly important for connectivity checks since the other connections get routed through a VPN which is needed to blend in on a local network in practice.
 
 In addition to our SUPL privacy improvements, we override the SUPL server to our proxy by default. We also add a toggle for users to switch to the standard SUPL server for their carrier (usually supl.google.com) or disable it entirely.
@@ -277,7 +279,7 @@ This feature doesn't apply when the device is in "Before First Unlock" state, me
 
 The feature is implemented in the init process, preventing it from being bypassed through system process crashes since an init crash causes a kernel panic which leads to a reboot.
 
-Clearing sensitive data from memory
+## Clearing sensitive data from memory
 As documented in our section on our added exploit mitigations, The OS adds zeroing of freed memory to both the standard userspace and kernel allocators. These features have the secondary benefit of clearing sensitive data from memory as soon as possible in addition to defending against exploits. Android implements regular compaction of frozen cached apps and apps currently running in the background based on triggering a full compacting garbage collection (GC) and then requesting that malloc frees as much memory as it can back to the OS. This pairs well with zeroing features and results in freed data getting cleared faster for Java/Kotlin and also the C, C++ and Rust libraries used by them where low-level allocators get held onto until the high level objects are freed.
 
 When the device is locked, we trigger full compacting garbage collection (GC) for the SystemUI and system_server processes to release all of the memory that's no longer used back to the OS. Due to The OS enabling kernel page allocator zeroing, this results in all the no longer referenced data in objects being cleared. We based our approach on Android's standard approach to running a full compacting GC for these two processes after the device is unlocked to clear remnants of the user's PIN/password and keys derived from it. This is a nice way to clear some data immediately after locking prior to our auto-reboot feature kicking in to clear all of the OS memory.
@@ -319,47 +321,48 @@ The OS supports forwarding notifications from users running in the background to
 ## The OS app repository
 The OS includes our own security, minimalism and usability-focused app repository client for using our first-party app repository. Our app repository is currently used to distribute our own apps and a mirror of Google Play for the sandboxed Google Play feature. In the future, it will be used to distribute first-party The OS builds of externally developed open source apps with hardening applied.
 
-Vanadium: hardened WebView and default browser
+## Vanadium: hardened WebView and default browser
 The OS includes our Vanadium browser as WebView implementation provided by the OS and our default browser. Vanadium is a hardened variant of Chromium providing enhanced privacy and security, similar to how The OS compares to AOSP. The Vanadium browser currently doesn't add many features but there are a lot of enhancements planned in the long term.
 
 Some of the features added compared to standard mobile Chromium:
 
-Hardware memory tagging (MTE) enabled for the main allocator
-Type-based Control Flow Integrity (CFI)
-Strong stack protector
-Automatic zero-initialized variables
-Well-defined signed overflow
-Strict site isolation and sandboxed iframes
-JavaScript JIT disabled by default with per-site toggle via drop-down permission menu
-Dynamic code execution is blocked for processes without the JavaScript JIT enabled as an extension to the seccomp-bpf sandbox
-Native Android autofill implementation to avoid needing sandboxed Google Play for autofill support
-Native Android credential manager support for passkeys to avoid needing sandboxed Google Play for passkey support
-WebGPU disabled for attack surface reduction
-WebRTC IP handling policy toggle to control peer-to-peer WebRTC mode
-High performance content filtering engine using EasyList + EasyPrivacy with per-site toggle via drop-down permission menu
-More complete state partitioning without origin trial opt-out
-Standard Android 16 user agent reduction is enabled early for the WebView to replace the major OS version, device model and browser minor/build/patch version with standard placeholder values
-High entropy client hints are replaced with the standard placeholder values used in Chromium's reduced user agent for both the browser and WebView to close a loophole where Chromium is still sharing the major OS version, device model and browser minor/build/patch version with any server requesting it via client hints
-Battery API always shows the battery as charging and at 100% capacity
-Trivial subdomain hiding disabled
-Consistent browser behavior across users without usage of feature flags and seed-based trials
-Nearly all remote services disabled by default or removed. Only connects to The OS servers by default. There are only 2 default services: component updates such as certificate authority and certificate revocation updates and DNS-over-HTTPS connectivity checks when enabled
-Web search and global search intents to replace the need for an OS search app
-Option to always open links from other apps, custom tabs, search intents and share intents in Incognito mode
-Option to reduce or disable sending cross-origin referrer information sharing where a link was opened
-Hybrid post-quantum cryptography enabled by default to match the behavior of Chromium on desktop since the devices we support are more than fast enough
+- Hardware memory tagging (MTE) enabled for the main allocator
+- Type-based Control Flow Integrity (CFI)
+- Strong stack protector
+- Automatic zero-initialized variables
+- Well-defined signed overflow
+- Strict site isolation and sandboxed iframes
+- JavaScript JIT disabled by default with per-site toggle via drop-down permission menu
+- Dynamic code execution is blocked for processes without the JavaScript JIT enabled as an extension to the seccomp-bpf sandbox
+- Native Android autofill implementation to avoid needing sandboxed Google Play for autofill support
+- Native Android credential manager support for passkeys to avoid needing sandboxed Google Play for passkey support
+- WebGPU disabled for attack surface reduction
+- WebRTC IP handling policy toggle to control peer-to-peer WebRTC mode
+- High performance content filtering engine using EasyList + EasyPrivacy with per-site toggle via drop-down permission menu
+- More complete state partitioning without origin trial opt-out
+- Standard Android 16 user agent reduction is enabled early for the WebView to replace the major OS version, device model and browser minor/build/patch version with standard placeholder values
+- High entropy client hints are replaced with the standard placeholder values used in Chromium's reduced user agent for both the browser and WebView to close a loophole where Chromium is still sharing the major OS version, device model and browser minor/build/patch version with any server requesting it via client hints
+- Battery API always shows the battery as charging and at 100% capacity
+- Trivial subdomain hiding disabled
+- Consistent browser behavior across users without usage of feature flags and seed-based trials
+- Nearly all remote services disabled by default or removed. Only connects to The OS servers by default. There are only 2 default services: component updates such as certificate authority and certificate revocation updates and DNS-over-HTTPS connectivity checks when enabled
+- Web search and global search intents to replace the need for an OS search app
+- Option to always open links from other apps, custom tabs, search intents and share intents in Incognito mode
+- Option to reduce or disable sending cross-origin referrer information sharing where a link was opened
+- Hybrid post-quantum cryptography enabled by default to match the behavior of Chromium on desktop since the devices we support are more than fast enough
+
 Better default settings, including non-user-facing flags:
 
-Reduce Accept-Language header by default (only available via chrome://flags)
-Third party cookies disabled by default
-Payment support disabled by default
-Website background sync disabled by default
-Sensors access disabled by default
-Protected media (DRM) disabled by default
-Hyperlink auditing disabled by default
-Do Not Track enabled by default mainly to avoid users differentiating themselves from others by enabling it since it has no real value
-WebRTC IP handling policy set to the most private value by default instead of the least private value (turned into a user-facing option by Vanadium)
-Configurable features such as JS JIT disabling and content filtering are currently exclusive to the Vanadium browser. Vanadium WebView is currently excluded from these changes until it has an app setting configuration menu similar to the standard site setting configuration menu.
+- Reduce Accept-Language header by default (only available via chrome://flags)
+- Third party cookies disabled by default
+- Payment support disabled by default
+- Website background sync disabled by default
+- Sensors access disabled by default
+- Protected media (DRM) disabled by default
+- Hyperlink auditing disabled by default
+- Do Not Track enabled by default mainly to avoid users differentiating themselves from others by enabling it since it has no real value
+- WebRTC IP handling policy set to the most private value by default instead of the least private value (turned into a user-facing option by Vanadium)
+- Configurable features such as JS JIT disabling and content filtering are currently exclusive to the Vanadium browser. Vanadium WebView is currently excluded from these changes until it has an app setting configuration menu similar to the standard site setting configuration menu.
 
 Extension support isn't planned due to being at odds with site isolation and anti-fingerprinting. We plan to implement more features as part of the browser with a focus on privacy and security improvements which can be active by default rather than opt-in niche features. Improvements will generally be opt-out on a per-site basis rather than opt-in to provide privacy and security by default and to avoid users making themselves more identifiable by opting into privacy and security features. Default-disabled JS JIT and default-enabled content filtering are early examples of this approach we plan to expand upon.
 
@@ -427,49 +430,49 @@ Users can enable more system crash reporting via Settings > Security & privacy >
 ## Other features
 This is an incomplete list of other The OS features.
 
-Per-profile encrypted file name padding increased from 16 bytes to 32 bytes to reduce the information leaked through file name lengths. See the FAQ section on the filesystem-based full disk encryption used by modern Android and The OS for more information.
-Improved user visibility into persistent firmware security through version and configuration verification with reporting of inconsistencies and debug features being enabled.
-Authenticated encryption for network time updates via a first-party server to prevent attackers from changing the time and enabling attacks based on bypassing certificate / key expiry, etc.
-Proper support for disabling network time updates rather than just not using the results
-Hardened local build / signing infrastructure
-Seamless automatic OS update system that just works and stays out of the way in the background without disrupting device usage, with full support for the standard automatic rollback if the first boot of the updated OS fails
-Require unlocking to access sensitive functionality via quick tiles
-Minimal bundled apps and services. Only essential apps are integrated into the OS. We don't make partnerships with apps and services to bundle them into the OS. An app may be the best choice today but a poor choice in the future, and vice-versa. Our approach will be recommending certain apps during the initial setup, not hard-wiring them into the OS.
-Wireless alerts are completely optional since The OS adds a toggle for the otherwise mandatory presidential alert type. This is particularly useful in Canada where the government abuses the system and sends every type of alert as a presidential alert to stop users from being able to opt out of weather and amber alerts.
-Removal of TrustCor root certificate authority as a trusted system CA.
-Secure-by-default Android 12 PendingIntent security check (FLAG_IMMUTABLE) instead of crash-by-default improving older app compatibility and security.
-Fixed UART debugging enabled warning on official release builds.
-Engineering / Prototype ("EVT", "PVT" or "DVT") device warning as these devices typically have relaxed security controls for development, mainly the secure boot state property ro.boot.secure_boot not set to PRODUCTION.
-Enable bootloader, radio, and boot partition version / fingerprint checks.
-Remove code automatically granting the location permission to system browsers.
-Apps that don't have any storage permission aren't allowed to read the list of all user-created directories (this is allowed on Android). The list of files is hidden from such apps on both Android and The OS.
-Screenshot shutter sound is toggleable using the Tap & click sounds option in Settings > Sound & vibration while still following the standard method of putting the device on vibration/silent mode to turn off the screenshot shutter sound.
-More precise system clock via lowering the system clock time update threshold from 2000ms to 50ms and lowering the system clock drift warning from 2000ms to 250ms. This can be helpful for time-based protocols such as TOTP.
-Call recording functionality within the Dialer app using modern Android storage with recordings stored in Recordings/Call Recordings and no restrictions based on region or special cases like playing a recording tone (users are still responsible for complying with their local laws).
-Change standard Android package installer behavior to preserving packages being disabled after updating them instead of them being re-enabled.
-Enable the "Always-on VPN" and "Block connections without VPN" toggles for VPNs by default.
-Permission prompts and the Android Debug Bridge USB authorization prompt have the allow action disabled by default with a 1 second delay before it becomes active. This protects against accidental presses, especially since an app can trick the user into doing it by having them push a button where the system dialog will be displayed.
+- Per-profile encrypted file name padding increased from 16 bytes to 32 bytes to reduce the information leaked through file name lengths. See the FAQ section on the filesystem-based full disk encryption used by modern Android and The OS for more information.
+- Improved user visibility into persistent firmware security through version and configuration verification with reporting of inconsistencies and debug features being enabled.
+- Authenticated encryption for network time updates via a first-party server to prevent attackers from changing the time and enabling attacks based on bypassing certificate / key expiry, etc.
+- Proper support for disabling network time updates rather than just not using the results
+- Hardened local build / signing infrastructure
+- Seamless automatic OS update system that just works and stays out of the way in the background without disrupting device usage, with full support for the standard automatic - rollback if the first boot of the updated OS fails
+- Require unlocking to access sensitive functionality via quick tiles
+- Minimal bundled apps and services. Only essential apps are integrated into the OS. We don't make partnerships with apps and services to bundle them into the OS. An app may be the best choice today but a poor choice in the future, and vice-versa. Our approach will be recommending certain apps during the initial setup, not hard-wiring them into the OS.
+- Wireless alerts are completely optional since The OS adds a toggle for the otherwise mandatory presidential alert type. This is particularly useful in Canada where the government abuses the system and sends every type of alert as a presidential alert to stop users from being able to opt out of weather and amber alerts.
+- Removal of TrustCor root certificate authority as a trusted system CA.
+- Secure-by-default Android 12 PendingIntent security check (FLAG_IMMUTABLE) instead of crash-by-default improving older app compatibility and security.
+- Fixed UART debugging enabled warning on official release builds.
+- Engineering / Prototype ("EVT", "PVT" or "DVT") device warning as these devices typically have relaxed security controls for development, mainly the secure boot state property - - ro.boot.secure_boot not set to PRODUCTION.
+- Enable bootloader, radio, and boot partition version / fingerprint checks.
+- Remove code automatically granting the location permission to system browsers.
+- Apps that don't have any storage permission aren't allowed to read the list of all user-created directories (this is allowed on Android). The list of files is hidden from such apps on both Android and The OS.
+- Screenshot shutter sound is toggleable using the Tap & click sounds option in Settings > Sound & vibration while still following the standard method of putting the device on vibration/silent mode to turn off the screenshot shutter sound.
+- More precise system clock via lowering the system clock time update threshold from 2000ms to 50ms and lowering the system clock drift warning from 2000ms to 250ms. This can be helpful for time-based protocols such as TOTP.
+- Call recording functionality within the Dialer app using modern Android storage with recordings stored in Recordings/Call Recordings and no restrictions based on region or special cases like playing a recording tone (users are still responsible for complying with their local laws).
+- Change standard Android package installer behavior to preserving packages being disabled after updating them instead of them being re-enabled.
+- Enable the "Always-on VPN" and "Block connections without VPN" toggles for VPNs by default.
+- Permission prompts and the Android Debug Bridge USB authorization prompt have the allow action disabled by default with a 1 second delay before it becomes active. This protects against accidental presses, especially since an app can trick the user into doing it by having them push a button where the system dialog will be displayed.
 
 ## Services
 Service infrastructure features:
 
-Strict privacy and security practices for our infrastructure
-Unnecessary logging is avoided, and logs are automatically purged after 4 days (network services used by the OS) to 10 days
-Services are hosted entirely via our own dedicated servers and virtual machines from OVH (and BuyVM for mirrors) without involving any additional parties for CDNs, SaaS platforms, mirrors or other services
-Our services are built with open technology stacks to avoid being locked into any particular hosting provider or vendor
-Open documentation on our infrastructure including listing out all of our services, guides on making similar setups, published configurations for each of our web services, etc.
-No proprietary services
-Authenticated encryption for all of our services
-Strong cipher configurations for all of our services (SSH, TLS, etc.) with only modern AEAD ciphers providing forward secrecy
-Our web sites do not include any third party content and entirely forbid it via strict Content Security Policy rules
-Our web sites disable referrer headers to maximize privacy
-Our web sites fully enable cross origin isolation and disable embedding in other content
-DNSSEC implemented for all of our domains to provide a root of trust for encryption and authentication for domain/server configuration
-DNS Certification Authority Authorization (CAA) records for all of our domains permitting only Let's Encrypt to issue certificates with fully integrated support for the accounturi and validationmethods pinning our Let's Encrypt accounts as the only ones allowed to issue certificates
-DANE TLSA records for pinning keys for all our TLS services
-Our mail server enforces DNSSEC/DANE to provide authenticated encryption when sending mail including alert messages from the attestation service
-SSHFP across all domains for pinning SSH keys
-Static key pinning for our services in apps like Auditor
-Our web services use robust OCSP stapling with Must-Staple
-No persistent cookies or similar client-side state for anything other than login sessions, which are set up securely using SameSite=Strict, Secure, HttpOnly, and Path=/ flags, prefixed with __Host and have server-side session tracking with the ability to log out of other sessions
-scrypt-based password hashing (likely Argon2 when the available implementations are more mature)
+- Strict privacy and security practices for our infrastructure
+- Unnecessary logging is avoided, and logs are automatically purged after 4 days (network services used by the OS) to 10 days
+- Services are hosted entirely via our own dedicated servers and virtual machines from OVH (and BuyVM for mirrors) without involving any additional parties for CDNs, SaaS platforms, mirrors or other services
+- Our services are built with open technology stacks to avoid being locked into any particular hosting provider or vendor
+- Open documentation on our infrastructure including listing out all of our services, guides on making similar setups, published configurations for each of our web services, etc.
+- No proprietary services
+- Authenticated encryption for all of our services
+- Strong cipher configurations for all of our services (SSH, TLS, etc.) with only modern AEAD ciphers providing forward secrecy
+- Our web sites do not include any third party content and entirely forbid it via strict Content Security Policy rules
+- Our web sites disable referrer headers to maximize privacy
+- Our web sites fully enable cross origin isolation and disable embedding in other content
+- DNSSEC implemented for all of our domains to provide a root of trust for encryption and authentication for domain/server configuration
+- DNS Certification Authority Authorization (CAA) records for all of our domains permitting only Let's Encrypt to issue certificates with fully integrated support for the accounturi and validationmethods pinning our Let's Encrypt accounts as the only ones allowed to issue certificates
+- DANE TLSA records for pinning keys for all our TLS services
+- Our mail server enforces DNSSEC/DANE to provide authenticated encryption when sending mail including alert messages from the attestation service
+- SSHFP across all domains for pinning SSH keys
+- Static key pinning for our services in apps like Auditor
+- Our web services use robust OCSP stapling with Must-Staple
+- No persistent cookies or similar client-side state for anything other than login sessions, which are set up securely using SameSite=Strict, Secure, HttpOnly, and Path=/ flags, prefixed with __Host and have server-side session tracking with the ability to log out of other sessions
+- scrypt-based password hashing (likely Argon2 when the available implementations are more mature)

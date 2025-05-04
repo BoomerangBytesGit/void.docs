@@ -1,41 +1,41 @@
 # Usage guide
 This is a guide covering some aspects of using the OS. See the features page for a list of the OS features.
 
-Table of contents
-System navigation
-Gesture navigation
-3-button navigation
-Storage access
-Storage Scopes
-Contact Scopes
-Accessibility
-Auditor
-Updates
-Settings
-Security
-Disabling
-Sideloading
-USB-C port and pogo pins control
-Web browsing
-Camera
-the OS Camera app
-Pixel Camera
-Exec spawning
-Bugs uncovered by security features
-Wi-Fi privacy
-Scanning
-Associated with an Access Point (AP)
-Network location
-LTE-only mode
-Sandboxed Google Play
-Installation
-Configuration
-Limitations
-eSIM support
-Android Auto
-Banking apps
-App link verification
-Carrier functionality
+#Table of contents
+- System navigation
+- Gesture navigation
+- 3-button navigation
+- Storage access
+- Storage Scopes
+- Contact Scopes
+- Accessibility
+- Auditor
+- Updates
+- Settings
+- Security
+- Disabling
+- Sideloading
+- USB-C port and pogo pins control
+- Web browsing
+- Camera
+- the OS Camera app
+- Pixel Camera
+- Exec spawning
+- Bugs uncovered by security features
+- Wi-Fi privacy
+- Scanning
+- Associated with an Access Point (AP)
+- Network location
+- LTE-only mode
+- Sandboxed Google Play
+- Installation
+- Configuration
+- Limitations
+- eSIM support
+- Android Auto
+- Banking apps
+- App link verification
+- Carrier functionality
 
 ## System navigation
 By default, the OS uses gesture-based navigation. We recommend reading our guide on gesture navigation and giving it a chance even if you think you won't like it. Our experience is that when armed with the appropriate knowledge, the vast majority of users prefer the newer gesture navigation approach.
@@ -57,7 +57,7 @@ Swiping from either the left or the right of the screen within the app (not the 
 
 The launcher uses a swipe up gesture starting anywhere on the screen to open the app drawer from the home screen. You need to start that gesture above the system navigation bar since any gesture starting on the navigation bar is handled by the OS as a system navigation gesture.
 
-3-button navigation
+## 3-button navigation
 3-button navigation is Android's oldest touchscreen-based navigation system. It will remain supported for the foreseeable future to provide accessibility for users unable to easily use the gestures. It's older than 2-button navigation but isn't considered a legacy feature.
 
 A large row across the bottom of the screen is reserved for navigation buttons. The Back button is on the left, the Home button is in the center and the Recent Apps button is on the right.
@@ -71,31 +71,34 @@ the OS inherits the same baseline approach to storage access as modern Android a
 
 There are two types of app-accessible storage:
 
-app-private ("internal") storage:
-inaccessible to other apps
-doesn't require any permission for full access
-cleared when the app is uninstalled
-shared ("external") storage:
-shared with other apps
-access is regulated with permissions
-files persist after uninstallation
-Android/data/ and Android/obb/ directories aren't considered to be parts of shared storage.
+- app-private ("internal") storage:
+- inaccessible to other apps
+- doesn't require any permission for full access
+- cleared when the app is uninstalled
+- shared ("external") storage:
+- shared with other apps
+- access is regulated with permissions
+- files persist after uninstallation
+- Android/data/ and Android/obb/ directories aren't considered to be parts of shared storage.
+
 For modern apps, access to the shared storage is controlled in the following way:
 
-Without any storage permission, an app is allowed to:
-create media files in standard directories (audio in Music/, Ringtones/, etc, images in Pictures/ and DCIM/, videos in DCIM/ and Movies/)
-create files of any type (both media and non-media) in Documents/ and Download/
-create new directories inside standard directories
-rename/delete files that were created by the app itself
-rename/delete directories if it can rename/delete all files within those directories
-Media access permission ("Allow access to media only", READ_EXTERNAL_STORAGE) allows the app to read media files that were created by other apps. Non-media files remain invisible to it. For apps targeting Android 13, the media access permission is split into READ_MEDIA_IMAGES, READ_MEDIA_VIDEO and READ_MEDIA_AUDIO.
-Media management special access permission ("Allow app to manage media", MANAGE_MEDIA) allows the app to delete and to rename media files created by other apps.
-"All files access" special access permission (MANAGE_EXTERNAL_STORAGE) allows the app to read, create, rename and delete files and directories of any type in any directory of the shared storage (including the root directory).
-For legacy apps (those that target Android 9 or lower and those that target Android 10 and request legacy storage mode), storage access permissions have a different meaning:
+- Without any storage permission, an app is allowed to:
+- create media files in standard directories (audio in Music/, Ringtones/, etc, images in Pictures/ and DCIM/, videos in DCIM/ and Movies/)
+- create files of any type (both media and non-media) in Documents/ and Download/
+- create new directories inside standard directories
+- rename/delete files that were created by the app itself
+- rename/delete directories if it can rename/delete all files within those directories
+- Media access permission ("Allow access to media only", READ_EXTERNAL_STORAGE) allows the app to read media files that were created by other apps. Non-media files remain invisible to it. For apps targeting Android 13, the media access permission is split into READ_MEDIA_IMAGES, READ_MEDIA_VIDEO and READ_MEDIA_AUDIO.
+- Media management special access permission ("Allow app to manage media", MANAGE_MEDIA) allows the app to delete and to rename media files created by other apps.
+- "All files access" special access permission (MANAGE_EXTERNAL_STORAGE) allows the app to read, create, rename and delete files and directories of any type in any directory of the shared storage (including the root directory).
+- For legacy apps (those that target Android 9 or lower and those that target Android 10 and request legacy storage mode), storage access permissions have a different meaning:
 
 Without a storage permission, app is not allowed any type of access to any files or directories inside the shared storage.
-READ_EXTERNAL_STORAGE permission allows the app to read both media and non-media files in any directory.
-WRITE_EXTERNAL_STORAGE permission allows the app to create, rename and delete files (of any type) and directories in any directory of shared storage (including the root directory).
+
+- READ_EXTERNAL_STORAGE permission allows the app to read both media and non-media files in any directory.
+- WRITE_EXTERNAL_STORAGE permission allows the app to create, rename and delete files (of any type) and directories in any directory of shared storage (including the root directory).
+
 Additionally, both modern and legacy Android apps can open the system file picker interface to have the user store or load one or more files/directories on their behalf. This type of access doesn't require any of the permissions listed above. Using this approach gives the user control over where files are stored in their home directory and which files/directories can be used by the app. This is based on the Storage Access Framework (SAF) introduced in Android 4.4. SAF allows the user to grant access to files/directories in their home directory, external drives and also app-based storage providers such as network shares, cloud storage, an encrypted volume, an external drive with a filesystem the OS doesn't support for external drives, etc. This is the only way to use those app-based storage providers and modern Android has removed the legacy approach for accessing external drives.
 
 ## Storage Scopes
@@ -193,12 +196,12 @@ The setting is available in Settings > Security > Exploit protection.
 
 The setting has five modes:
 
-Off
-Charging-only
-Charging-only when locked
-Charging-only when locked, except before first unlock
-On
-The default is Charging-only when locked, which significantly reduces attack surface when the device is locked. After locking, it blocks any new USB connections immediately and disables USB data once any current connections end.
+- Off
+- Charging-only
+- Charging-only when locked
+- Charging-only when locked, except before first unlock
+- On
+- The default is Charging-only when locked, which significantly reduces attack surface when the device is locked. After locking, it blocks any new USB connections immediately and disables USB data once any current connections end.
 
 For technical details on how this feature works using a combination of hardware and software protection, see the section on the features page.
 
@@ -428,10 +431,10 @@ If you are having issues with Visual Voicemail, please be aware that AT&T USA us
 
 If you are having problems sending or receiving SMS/MMS messages, we suggest that you perform the following steps:
 
-Deregister your phone number from Apple iMessage
-Deregister your phone number from Google Chat Features
-Deregister your phone number from your carrier's RCS service (Not all carriers have this)
-If you continue to have problems despite following the instructions above or you have another carrier related issue, we suggest that you perform the following steps:
+- Deregister your phone number from Apple iMessage
+- Deregister your phone number from Google Chat Features
+- Deregister your phone number from your carrier's RCS service (Not all carriers have this)
+- If you continue to have problems despite following the instructions above or you have another carrier related issue, we suggest that you perform the following steps:
 
 Some carriers require you to explicitly opt in to use services such as Wi-Fi calling. Consult your carrier's documentation on the process for this or contact them.
 Reset Mobile Network Settings in Settings > System > Reset options and then reboot the device.

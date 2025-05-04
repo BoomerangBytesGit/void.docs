@@ -54,7 +54,7 @@ Since these restrictions became standard, The OS only makes a small change to re
 
 Apps can determine the model of the device (such as it being a Pixel 6) either directly or indirectly through the properties of the hardware and software. There isn't a way to avoid this short of the OS supporting running apps in a virtual machine with limited functionality and hardware acceleration. Hiding the CPU/SoC model would require not even using basic hardware virtualization support and these things could probably still be detected via performance measurements.
 
-What about non-hardware identifiers?
+# What about non-hardware identifiers?
 In addition to not having a way to identify the hardware, apps cannot directly identify the installation of the OS on the hardware. Apps only have a small portion of the OS configuration exposed to them and there is not much for device owners to change which could identify their installation. Apps can detect that they're being run on The OS via the privacy and security features placing further restrictions on them and hardening them against further exploitation. Apps can identify their own app installation via their app data and can directly (until that's removed) or indirectly identify a profile. Profiles should be used when separate identities are desired. Profiles can be used as temporary ephemeral identities by creating them for a specific need and then deleting them. The rest of this answer only provides more technical details, so you can stop reading here if you only want an overview and actionable advice (i.e. use profiles as identities not inherently tied to each other).
 
 Examples of the global OS configuration available to apps are time zone, network country code and other similar global settings. Per-profile examples are dark mode and language. Similar to extension and browser configuration / state being fingerprinted by web sites, an app could use a combination of these things in an attempt to identify the installation. All of these things vary at runtime and can be changed, but some are fairly unlikely to change in practice after the initial setup of the device such as the ones listed above. The OS will likely add further restrictions in this area and a couple toggles for certain cases like time zones to use a standard value instead.
@@ -253,14 +253,15 @@ A component being on a separate chip is orthogonal to whether it's isolated. In 
 
 The mobile Atheros Wi-Fi driver/firmware is primarily a SoftMAC implementation with the vast majority of the complexity in the driver rather than the firmware. The fully functional driver is massive and the firmware is quite small. Unfortunately, since the Linux kernel is monolithic and has no internal security boundaries, the attack surface is problematic and a HardMAC implementation with most complexity in the isolated firmware could be better than the status quo. An isolated driver would be ideal.
 
-Day to day use
-How do I keep the OS updated?
+# Day to day use
+
+## How do I keep the OS updated?
 The OS has entirely automatic background updates. More details are available in the usage guide's updates section.
 
-How do I update without connecting the device to the internet?
+## How do I update without connecting the device to the internet?
 Updates can be sideloaded via recovery.
 
-Do notifications work properly on The OS?
+## Do notifications work properly on The OS?
 Yes, notifications work properly on The OS. Portable apps avoiding a hard dependency on Google Play services for their functionality have fully working notifications on The OS. Apps that are not fully portable across Android implementations often lack support for background notifications due to only bothering to implement support for it via Google Play services.
 
 Most apps that are able to run without Google Play services will have working notifications when they're in the foreground. Unfortunately, many apps don't implement a service to continue receiving events from their server in the background. On the stock OS, they rely on receiving events through Google servers via Firebase Cloud Messaging (FCM) in the background and sometimes even in the foreground, although it doesn't have good reliability/latency.

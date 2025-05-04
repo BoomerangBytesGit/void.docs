@@ -1,0 +1,6 @@
+Check every month for firewall/router updates
+https://172.30.15.1/ui/core/firmware
+
+Update Firewall/Router threat detection rules
+https://172.30.15.1/ui/ids/policy#policies
+
